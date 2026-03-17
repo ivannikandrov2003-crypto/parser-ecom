@@ -1,5 +1,8 @@
-API_TOKEN = "8462544144:AAF6C1yUNnbOZ0YzrRfjyq0iDxNsv7Rr25o"
-ADMIN_ID = 674187795
+import os
+
+
+API_TOKEN = os.getenv("API_TOKEN")
+ADMIN_ID = os.getenv("ADMIN_ID")
 
 SOURCES = {
     "Sostav": "https://www.sostav.ru/rss",

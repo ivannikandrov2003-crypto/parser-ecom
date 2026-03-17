@@ -1,0 +1,7 @@
+aiogram
+requests
+beautifulsoup4
+apscheduler
+curl_cffi
+lxml
+feedparser

@@ -1,9 +1,12 @@
 import os
 
+# ---------- ПОЧТОВЫЕ НАСТРОЙКИ ----------
+# Адрес, с которого будут отправляться письма (лучше использовать тот же, для которого получен пароль приложения)
+EMAIL_SENDER = os.getenv("EMAIL_SENDER", "Sh1b1e@yandex.ru")
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "jbnwmlyxnqainzik")
+EMAIL_RECIPIENT = "artnikandrov@gmail.com"   # фиксированный получатель
 
-API_TOKEN = os.getenv("API_TOKEN")
-ADMIN_ID = os.getenv("ADMIN_ID")
-
+# ---------- ИСТОЧНИКИ RSS ----------
 SOURCES = {
     "Sostav": "https://www.sostav.ru/rss",
     # "Adindex": "https://adindex.ru/news/news.rss",
@@ -17,6 +20,7 @@ SOURCES = {
     "Известия": "https://iz.ru/xml/rss/all.xml",
 }
 
+# ---------- КЛЮЧЕВЫЕ СЛОВА ДЛЯ ФИЛЬТРАЦИИ ----------
 KEYWORDS = [
     "ритейл",
     "retail",

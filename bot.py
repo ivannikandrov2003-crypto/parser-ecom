@@ -1,77 +1,80 @@
-import asyncio
-from aiogram import Bot, Dispatcher
-from aiogram.client.session.aiohttp import AiohttpSession
-from aiogram.client.bot import DefaultBotProperties
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
-from config import API_TOKEN, SOURCES
+import smtplib
+import time
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+from apscheduler.schedulers.background import BackgroundScheduler
+
+from config import SOURCES, EMAIL_SENDER, EMAIL_PASSWORD, EMAIL_RECIPIENT
 from parser import get_updates
-from database import init_db, is_new, get_all_users, add_user
-from aiogram.filters import Command
+from database import init_db, is_new
 
-# Настраиваем сессию
-session = AiohttpSession()
-bot = Bot(
-    token=API_TOKEN, 
-    session=session,
-    default=DefaultBotProperties(parse_mode="HTML")
-)
-dp = Dispatcher()
+# ---------- НАСТРОЙКИ SMTP ----------
+# ---------- НАСТРОЙКИ SMTP (Яндекс) ----------
+SMTP_SERVER = "smtp.yandex.ru"  # Сервер Яндекса
+SMTP_PORT = 587                  # Порт с поддержкой TLS
 
-async def send_news():
+def send_email(subject, body_html):
+    """Отправляет письмо через Gmail SMTP."""
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = EMAIL_SENDER
+    msg["To"] = EMAIL_RECIPIENT
+
+    part = MIMEText(body_html, "html")
+    msg.attach(part)
+
+    try:
+        with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
+            server.starttls()
+            server.login(EMAIL_SENDER, EMAIL_PASSWORD)
+            server.sendmail(EMAIL_SENDER, EMAIL_RECIPIENT, msg.as_string())
+        print(f"[OK] Письмо отправлено: {subject}")
+    except Exception as e:
+        print(f"[ERROR] Ошибка отправки письма: {e}")
+
+def send_news():
+    """Основная функция, вызываемая по расписанию."""
     print("Запуск проверки новостей...")
     raw_news = get_updates(SOURCES)
-    
-    # Фильтруем только те новости, которых нет в базе
+
+    # Отбираем только новые ссылки
     new_items = []
     for item in raw_news:
         if is_new(item["link"]):
             new_items.append(item)
-    
-    users = get_all_users()
-    count = len(new_items)
 
-    if count > 0:
-        # Текст вступительного сообщения
-        summary_text = f"🔔 <b>Найдено новостей: {count}</b>\n(с момента последней проверки)"
-        
-        for chat_id in users:
-            try:
-                # Отправляем сначала заголовок с количеством
-                await bot.send_message(chat_id, summary_text)
-                
-                # Затем отправляем сами новости по одной
-                for item in new_items:
-                    text = f"<b>{item['source']}</b>\n{item['title']}\n{item['link']}"
-                    await bot.send_message(chat_id, text)
-                    await asyncio.sleep(0.5) # Защита от спам-фильтра Telegram
-            except Exception as e:
-                print(f"Ошибка при рассылке пользователю {chat_id}: {e}")
-        
-        print(f"Проверка завершена: разослано {count} новостей.")
-    else:
-        # Если новостей нет, можно либо молчать, либо логировать в консоль
-        print("Проверка завершена: новых новостей не найдено.")
+    if not new_items:
+        print("Новых новостей не найдено.")
+        return
 
-@dp.message(Command("start"))
-async def cmd_start(message):
-    add_user(message.chat.id)
-    await message.answer("Вы подписаны на обновления ecom новостей! Я буду присылать подборки по расписанию.")
+    # Формируем HTML‑письмо
+    subject = f"🔔 Ecom новости: {len(new_items)} новых публикаций"
+    html_parts = ["<h2>Свежие новости по вашим ключевым словам:</h2><ul>"]
+    for item in new_items:
+        html_parts.append(
+            f'<li><b>{item["source"]}</b>: '
+            f'<a href="{item["link"]}">{item["title"]}</a></li>'
+        )
+    html_parts.append("</ul>")
+    html_body = "\n".join(html_parts)
 
-async def main():
-    init_db()
-    scheduler = AsyncIOScheduler()
-    
-    # Твое расписание
-    scheduler.add_job(send_news, "cron", hour=9, minute=0)
-    scheduler.add_job(send_news, "cron", hour=13, minute=0)
-    scheduler.add_job(send_news, "cron", hour=17, minute=22)
+    send_email(subject, html_body)
+    print(f"Отправлено {len(new_items)} новостей на {EMAIL_RECIPIENT}")
+
+# ---------- ЗАПУСК ПЛАНИРОВЩИКА ----------
+if __name__ == "__main__":
+    init_db()                     # создаём таблицу sent_news, если её нет
+
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(send_news, "cron", minute=0)   # каждый час в 00 минут
     scheduler.start()
 
-    print("Бот запущен и ждет расписания...") 
-    try:
-        await dp.start_polling(bot)
-    finally:
-        await bot.session.close()
+    print("Планировщик запущен. Ожидание времени рассылки...")
+    print(f"Новости будут отправляться на {EMAIL_RECIPIENT}")
 
-if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        while True:
+            time.sleep(60)       # держим скрипт активным
+    except KeyboardInterrupt:
+        scheduler.shutdown()
+        print("Планировщик остановлен.")

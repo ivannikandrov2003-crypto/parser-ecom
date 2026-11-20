@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Новости e-commerce</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='feed.css') }}">
+    <script src="{{ url_for('static', path='feed.js') }}" defer></script>
+</head>
+<body>
+    <header class="masthead">
+        <div class="layout masthead__inner">
+            <h1><a href="{{ feed_url }}">Новости e-commerce</a></h1>
+            <button class="button button--refresh" id="refresh" type="button"
+                    data-endpoint="{{ url_for('refresh_news') }}" data-feed="{{ feed_url }}">
+                Обновить
+            </button>
+        </div>
+    </header>
+
+    <main class="layout feed">
+        <p class="status" id="refresh-status" role="status" hidden></p>
+
+        {% if error_message %}
+        <section class="empty" aria-labelledby="feed-error">
+            <h2 id="feed-error">{{ error_message }}</h2>
+            <a class="button button--secondary" href="">Повторить загрузку</a>
+        </section>
+        {% elif cards %}
+        <div class="news-grid">
+            {% for card in cards %}
+            <article class="news-card">
+                <div class="news-card__meta">
+                    <span class="news-card__source">{{ card.source }}</span>
+                    <time datetime="{{ card.published_at.isoformat() }}">{{ card.display_date }}</time>
+                </div>
+                <h2 class="news-card__title">{{ card.title }}</h2>
+                <p class="news-card__summary">{{ card.summary }}</p>
+                <div class="news-card__actions">
+                    <a class="news-card__link" href="{{ card.url }}" target="_blank" rel="noopener noreferrer"
+                       aria-label="Читать оригинал: {{ card.title }}">Читать оригинал</a>
+                    <button class="button button--secondary button--copy" type="button" data-copy
+                            title="Скопировать выжимку и ссылку">Скопировать</button>
+                </div>
+            </article>
+            {% endfor %}
+        </div>
+        {% else %}
+        <section class="empty" aria-labelledby="feed-empty">
+            {% if first_page_url %}
+            <h2 id="feed-empty">Более ранних публикаций нет</h2>
+            {% else %}
+            <h2 id="feed-empty">Публикаций пока нет</h2>
+            <p>Нажмите «Обновить», чтобы загрузить новости из RSS.</p>
+            {% endif %}
+        </section>
+        {% endif %}
+
+        {% if first_page_url or next_page_url %}
+        <nav class="pagination" aria-label="Страницы ленты">
+            {% if first_page_url %}
+            <a class="button button--secondary" href="{{ first_page_url }}">К началу ленты</a>
+            {% endif %}
+            {% if next_page_url %}
+            <a class="button button--secondary" href="{{ next_page_url }}" rel="next">Более ранние новости</a>
+            {% endif %}
+        </nav>
+        {% endif %}
+    </main>
+
+    <p class="visually-hidden" id="copy-status" role="status"></p>
+    <dialog class="copy-dialog" id="copy-dialog" aria-labelledby="copy-dialog-title">
+        <h2 id="copy-dialog-title">Скопируйте текст вручную</h2>
+        <textarea rows="7" readonly aria-label="Выжимка и ссылка на оригинал"></textarea>
+        <form method="dialog">
+            <button class="button button--secondary">Закрыть</button>
+        </form>
+    </dialog>
+</body>
+</html>

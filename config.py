@@ -1,10 +1,32 @@
 import os
 
-# ---------- ПОЧТОВЫЕ НАСТРОЙКИ ----------
-# Адрес, с которого будут отправляться письма (лучше использовать тот же, для которого получен пароль приложения)
-EMAIL_SENDER = os.getenv("EMAIL_SENDER", "Sh1b1e@yandex.ru")
-EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "jbnwmlyxnqainzik")
-EMAIL_RECIPIENT = "artnikandrov@gmail.com"   # фиксированный получатель
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# ---------- ELASTICSEARCH ----------
+ES_URL = os.getenv("ES_URL", "http://127.0.0.1:9200")
+ES_INDEX = "news"
+NEWS_RETENTION_DAYS = 30
+SEMANTIC_SIMILARITY_THRESHOLD = float(os.getenv("SEMANTIC_SIMILARITY_THRESHOLD", "0.92"))
+
+# ---------- ПАЙПЛАЙН ----------
+REFRESH_INTERVAL_MINUTES = int(os.getenv("REFRESH_INTERVAL_MINUTES", "60"))
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
+# ---------- GIGACHAT ----------
+GIGACHAT_CLIENT_ID = os.getenv("GIGACHAT_CLIENT_ID", "")
+GIGACHAT_CLIENT_SECRET = os.getenv("GIGACHAT_CLIENT_SECRET", "")
+GIGACHAT_SCOPE = os.getenv("GIGACHAT_SCOPE", "GIGACHAT_API_PERS")
+GIGACHAT_CA_BUNDLE = os.getenv("GIGACHAT_CA_BUNDLE", "")
+GIGACHAT_CHAT_MODEL = os.getenv("GIGACHAT_CHAT_MODEL", "GigaChat-2")
+
+# ---------- CLOUD.RU FOUNDATION MODELS ----------
+CLOUDRU_API_KEY = os.getenv("CLOUDRU_API_KEY", "")
+CLOUDRU_NETWORK_INTERFACE = os.getenv("CLOUDRU_NETWORK_INTERFACE", "")
+CLOUDRU_DOH_URL = os.getenv("CLOUDRU_DOH_URL", "")
+CLOUDRU_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-0.6B"
+EMBEDDING_DIMENSIONS = 1024
 
 # ---------- ИСТОЧНИКИ RSS ----------
 SOURCES = {

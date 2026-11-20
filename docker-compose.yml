@@ -14,7 +14,7 @@ services:
       elasticsearch:
         condition: service_healthy
     ports:
-      - "${APP_BIND_IP:-127.0.0.1}:${APP_PORT:-8000}:8000"
+      - "${APP_BIND_IP:-0.0.0.0}:${APP_PORT:-8000}:8000"
     environment:
       ES_URL: http://elasticsearch:9200
       SEMANTIC_SIMILARITY_THRESHOLD: ${SEMANTIC_SIMILARITY_THRESHOLD:-0.92}

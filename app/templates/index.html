@@ -4,15 +4,15 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Новости e-commerce</title>
-    <link rel="stylesheet" href="{{ url_for('static', path='feed.css') }}">
-    <script src="{{ url_for('static', path='feed.js') }}" defer></script>
+    <link rel="stylesheet" href="{{ url_for('static', path='feed.css').path }}">
+    <script src="{{ url_for('static', path='feed.js').path }}" defer></script>
 </head>
 <body>
     <header class="masthead">
         <div class="layout masthead__inner">
             <h1><a href="{{ feed_url }}">Новости e-commerce</a></h1>
             <button class="button button--refresh" id="refresh" type="button"
-                    data-endpoint="{{ url_for('refresh_news') }}" data-feed="{{ feed_url }}">
+                    data-endpoint="{{ url_for('refresh_news').path }}" data-feed="{{ feed_url }}">
                 Обновить
             </button>
         </div>

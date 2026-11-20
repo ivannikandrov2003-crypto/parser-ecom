@@ -3,10 +3,11 @@
 import logging
 from pathlib import Path
 from typing import Annotated
+from urllib.parse import urlencode
 
 from elasticsearch import ApiError, TransportError
 from fastapi import APIRouter, HTTPException, Query, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
@@ -20,6 +21,13 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).with_name("templates"))
 PAGE_SIZE = 12
+
+
+@router.get("/healthz", include_in_schema=False)
+def healthcheck(request: Request) -> Response:
+    """Проверяет готовность веб-сервера и доступ к Elasticsearch."""
+    available = request.app.state.elastic.options(request_timeout=2).ping()
+    return Response(status_code=204 if available else 503)
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -43,11 +51,12 @@ def news_feed(
         error_message = "Не удалось загрузить ленту. Попробуйте открыть её снова."
         status_code = 503
 
-    feed_url = request.url_for("news_feed")
+    feed_url = request.url_for("news_feed").path
     next_url = None
     if page.next_position is not None:
         timestamp, url = page.next_position
-        next_url = feed_url.include_query_params(before_time=timestamp, before_url=url)
+        query = urlencode({"before_time": timestamp, "before_url": url})
+        next_url = f"{feed_url}?{query}"
 
     return templates.TemplateResponse(
         request=request,

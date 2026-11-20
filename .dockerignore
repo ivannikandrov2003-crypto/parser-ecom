@@ -1,0 +1,17 @@
+*
+!Dockerfile
+!requirements.txt
+!config.py
+!parser.py
+!bot.py
+!app/
+!app/**
+!docker/
+!docker/russian-trusted-root-ca.crt
+
+**/.env*
+**/__pycache__/
+**/*.py[cod]
+**/*.pem
+**/*.log
+**/.DS_Store

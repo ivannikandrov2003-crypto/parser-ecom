@@ -5,13 +5,13 @@ from contextlib import closing
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
-from pathlib import Path
 
 from elasticsearch import ApiError, Elasticsearch, TransportError
 from filelock import FileLock, Timeout as FileLockTimeout
 from trafilatura import extract
 
 from config import LOG_LEVEL, NEWS_RETENTION_DAYS, SEMANTIC_SIMILARITY_THRESHOLD, SOURCES
+from config import PIPELINE_LOCK_PATH as LOCK_PATH
 from parser import FeedArticle, FetchError, fetch_page, get_source_updates
 
 from .cloudru_client import CloudRuEmbeddingClient, CloudRuError
@@ -19,7 +19,6 @@ from .elastic import create_article, create_client, ensure_news_index, has_simil
 from .gigachat_client import GigaChatClient, GigaChatError
 
 logger = logging.getLogger(__name__)
-LOCK_PATH = Path(__file__).resolve().parent.parent / ".pipeline.lock"
 
 
 class PipelineError(RuntimeError):

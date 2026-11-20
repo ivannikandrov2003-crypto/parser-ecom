@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -13,6 +14,7 @@ SEMANTIC_SIMILARITY_THRESHOLD = float(os.getenv("SEMANTIC_SIMILARITY_THRESHOLD",
 # ---------- ПАЙПЛАЙН ----------
 REFRESH_INTERVAL_MINUTES = int(os.getenv("REFRESH_INTERVAL_MINUTES", "60"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+PIPELINE_LOCK_PATH = Path(os.getenv("PIPELINE_LOCK_PATH") or Path(__file__).resolve().with_name(".pipeline.lock"))
 
 # ---------- GIGACHAT ----------
 GIGACHAT_CLIENT_ID = os.getenv("GIGACHAT_CLIENT_ID", "")

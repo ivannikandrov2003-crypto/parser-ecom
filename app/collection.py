@@ -14,6 +14,7 @@ from config import LOG_LEVEL, REFRESH_INTERVAL_MINUTES, RSS_EXCERPT_SOURCES, SOU
 from parser import FetchError, fetch_page, get_source_updates
 
 from .database import COLLECTION_LOCK, connect_async, try_lock_async
+from .footnotes import extract_footnotes
 
 logger = logging.getLogger(__name__)
 
@@ -67,11 +68,13 @@ async def collect_source(db, source, feed, now):
             result.duplicates += 1
             continue
         is_feed_excerpt = False
+        html = b""
         try:
             page = await asyncio.to_thread(fetch_page, url)
             text = await asyncio.to_thread(extract, page.content, url=page.url or url, include_comments=False)
             if not text or not text.strip():
                 raise FetchError("Не удалось извлечь текст статьи")
+            html = page.content
         except FetchError as error:
             if source not in RSS_EXCERPT_SOURCES or not entry.excerpt or entry.excerpt.casefold() == entry.title.casefold():
                 result.failed_articles += 1
@@ -80,12 +83,13 @@ async def collect_source(db, source, feed, now):
             text = entry.excerpt
             is_feed_excerpt = True
             logger.info("Используем анонс RSS для %s: %s", url, error)
+        notes = await asyncio.to_thread(extract_footnotes, text, entry.title, html)
         inserted = await db.execute(
             """
-            INSERT INTO raw_news (header, text, source, source_name, published_at, is_feed_excerpt)
-            VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT (source) DO NOTHING
+            INSERT INTO raw_news (header, text, source, source_name, published_at, is_feed_excerpt, source_footnotes)
+            VALUES (%s, %s, %s, %s, %s, %s, %s) ON CONFLICT (source) DO NOTHING
             """,
-            (entry.title, text.strip(), url, entry.source, entry.published_at, is_feed_excerpt),
+            (entry.title, text.strip(), url, entry.source, entry.published_at, is_feed_excerpt, Jsonb(notes)),
         )
         if inserted.rowcount:
             result.collected += 1

@@ -10,9 +10,10 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse, Response
 from fastapi.templating import Jinja2Templates
 from psycopg import Error
-from pydantic import AnyHttpUrl, AwareDatetime, BaseModel
+from pydantic import AnyHttpUrl, AwareDatetime, BaseModel, Field
 
 from .database import connect_async
+from .footnotes import Footnote, attach_footnotes
 from .models import NewsCard
 from .telegram_worker import MODE as TELEGRAM_MODE
 
@@ -21,7 +22,7 @@ router = APIRouter()
 templates = Jinja2Templates(directory=Path(__file__).with_name("templates"))
 PAGE_SIZE = 12
 NEWS_SELECT = """
-    SELECT n.id, r.header, r.source, r.source_name, r.published_at, n.text, r.is_feed_excerpt
+    SELECT n.id, r.header, r.source, r.source_name, r.published_at, n.text, r.is_feed_excerpt, r.source_footnotes
     FROM news n JOIN raw_news r ON r.id = n.raw_news_id
     WHERE r.checked
 """
@@ -34,6 +35,12 @@ class NewsItem(BaseModel):
     source: AnyHttpUrl
     published_at: AwareDatetime
     is_feed_excerpt: bool = False
+    footnotes: list[Footnote] = Field(default_factory=list)
+
+
+def render_news(row: dict) -> dict:
+    text, notes = attach_footnotes(row["text"], row["source_footnotes"])
+    return row | {"text": text, "footnotes": notes}
 
 
 @router.get("/healthz", include_in_schema=False)
@@ -83,9 +90,12 @@ async def news_feed(
         status_code = 503
 
     cards = [
-        NewsCard(url=row["source"], title=row["header"], source=row["source_name"],
-                 published_at=row["published_at"], summary=row["text"], is_feed_excerpt=row["is_feed_excerpt"])
-        for row in rows[:PAGE_SIZE]
+        NewsCard(
+            url=row["source"], title=row["header"], source=row["source_name"],
+            published_at=row["published_at"], summary=row["text"], is_feed_excerpt=row["is_feed_excerpt"],
+            footnotes=row["footnotes"],
+        )
+        for row in map(render_news, rows[:PAGE_SIZE])
     ]
     feed_url = request.url_for("news_feed").path
     next_url = None
@@ -122,7 +132,7 @@ async def list_news(
             NEWS_SELECT + " ORDER BY r.published_at DESC, n.id DESC LIMIT %s OFFSET %s",
             (limit, offset),
         )
-        return await cursor.fetchall()
+        return [render_news(row) for row in await cursor.fetchall()]
 
 
 @router.get("/api/news/{news_id}", response_model=NewsItem)
@@ -134,7 +144,7 @@ async def get_news(news_id: int):
         row = await cursor.fetchone()
     if row is None:
         raise HTTPException(404, "Новость не найдена")
-    return row
+    return render_news(row)
 
 
 @router.get("/api/refresh", name="refresh_status")

@@ -7,8 +7,11 @@ from pathlib import Path
 
 import psycopg
 from psycopg.rows import dict_row
+from psycopg.types.json import Jsonb
 
 from config import LOG_LEVEL
+
+from .footnotes import extract_footnotes
 
 COLLECTION_LOCK = 51001
 SEARCH_LOCK = 51002
@@ -44,6 +47,14 @@ async def try_lock_async(db, key):
             await db.execute("SELECT pg_advisory_unlock(%s)", (key,))
 
 
+def backfill_source_footnotes(db):
+    articles = db.execute("SELECT id, header, text FROM raw_news WHERE strpos(text, '*') > 0")
+    for row in articles:
+        notes = extract_footnotes(row["text"], row["header"])
+        if notes:
+            db.execute("UPDATE raw_news SET source_footnotes = %s WHERE id = %s", (Jsonb(notes), row["id"]))
+
+
 def migrate():
     with connect() as db, db.transaction():
         db.execute("SELECT pg_advisory_xact_lock(%s)", (MIGRATION_LOCK,))
@@ -53,6 +64,8 @@ def migrate():
             if path.name in applied:
                 continue
             db.execute(path.read_text(encoding="utf-8"))
+            if path.name == "005_source_footnotes.sql":
+                backfill_source_footnotes(db)
             db.execute("INSERT INTO schema_migrations (name) VALUES (%s)", (path.name,))
             logging.info("Применена миграция %s", path.name)
 

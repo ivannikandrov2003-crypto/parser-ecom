@@ -2,7 +2,9 @@
 
 from zoneinfo import ZoneInfo
 
-from pydantic import AnyHttpUrl, AwareDatetime, BaseModel
+from pydantic import AnyHttpUrl, AwareDatetime, BaseModel, Field
+
+from .footnotes import Footnote
 
 MOSCOW = ZoneInfo("Europe/Moscow")
 
@@ -15,6 +17,7 @@ class NewsCard(BaseModel):
     source: str
     published_at: AwareDatetime
     summary: str
+    footnotes: list[Footnote] = Field(default_factory=list)
     is_feed_excerpt: bool = False
 
     @property

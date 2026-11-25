@@ -36,11 +36,18 @@
                 </div>
                 <h2 class="news-card__title">{{ card.title }}</h2>
                 <p class="news-card__summary">{{ card.summary }}</p>
+                {% if card.footnotes %}
+                <ul class="news-card__footnotes" aria-label="Примечания из оригинальной публикации">
+                    {% for footnote in card.footnotes %}
+                    <li>{{ footnote.marker }} {{ footnote.text }}</li>
+                    {% endfor %}
+                </ul>
+                {% endif %}
                 <div class="news-card__actions">
                     <a class="news-card__link" href="{{ card.url }}" target="_blank" rel="noopener noreferrer"
                        aria-label="Читать оригинал: {{ card.title }}">Читать оригинал</a>
                     <button class="button button--secondary button--copy" type="button" data-copy
-                            title="Скопировать выжимку и ссылку">Скопировать</button>
+                            title="Скопировать выжимку, примечания и ссылку">Скопировать</button>
                 </div>
             </article>
             {% endfor %}

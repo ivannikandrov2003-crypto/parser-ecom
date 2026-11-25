@@ -83,7 +83,10 @@ for (const button of document.querySelectorAll("[data-copy]")) {
         const card = button.closest(".news-card");
         const summary = card.querySelector(".news-card__summary").textContent.trim();
         const originalUrl = card.querySelector(".news-card__link").href;
-        const message = `${summary}\n\nИсточник: ${originalUrl}`;
+        const footnotes = Array.from(
+            card.querySelectorAll(".news-card__footnotes li"), note => note.textContent.trim(),
+        ).join("\n");
+        const message = [summary, footnotes, `Источник: ${originalUrl}`].filter(Boolean).join("\n\n");
 
         try {
             await navigator.clipboard.writeText(message);
@@ -96,7 +99,9 @@ for (const button of document.querySelectorAll("[data-copy]")) {
         }
 
         button.textContent = "Скопировано";
-        copyStatus.textContent = "Выжимка и ссылка на оригинал скопированы.";
+        copyStatus.textContent = footnotes
+            ? "Выжимка, примечания и ссылка на оригинал скопированы."
+            : "Выжимка и ссылка на оригинал скопированы.";
         clearTimeout(resetLabel);
         resetLabel = setTimeout(() => {
             button.textContent = "Скопировать";

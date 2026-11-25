@@ -121,6 +121,20 @@ a { color: inherit; }
     color: #394743;
 }
 
+.news-card__footnotes {
+    width: 100%;
+    box-sizing: border-box;
+    margin: -0.65rem 0 1.3rem;
+    padding: 0.55rem 0 0;
+    border-top: 1px solid #dce6e0;
+    color: #53625c;
+    font-size: 0.85rem;
+    line-height: 1.45;
+    list-style: none;
+}
+
+.news-card__footnotes li + li { margin-top: 0.35rem; }
+
 .news-card__actions {
     display: flex;
     align-items: center;

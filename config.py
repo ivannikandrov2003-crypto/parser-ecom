@@ -1,5 +1,4 @@
 import os
-from pathlib import Path
 
 from dotenv import load_dotenv
 
@@ -7,54 +6,141 @@ load_dotenv()
 
 # ---------- ELASTICSEARCH ----------
 ES_URL = os.getenv("ES_URL", "http://127.0.0.1:9200")
-ES_INDEX = "news"
 NEWS_RETENTION_DAYS = 30
-SEMANTIC_SIMILARITY_THRESHOLD = float(os.getenv("SEMANTIC_SIMILARITY_THRESHOLD", "0.92"))
 
 # ---------- ПАЙПЛАЙН ----------
-REFRESH_INTERVAL_MINUTES = int(os.getenv("REFRESH_INTERVAL_MINUTES", "60"))
+REFRESH_INTERVAL_MINUTES = int(os.getenv("REFRESH_INTERVAL_MINUTES", "30"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
-PIPELINE_LOCK_PATH = Path(os.getenv("PIPELINE_LOCK_PATH") or Path(__file__).resolve().with_name(".pipeline.lock"))
 
 # ---------- GIGACHAT ----------
 GIGACHAT_CLIENT_ID = os.getenv("GIGACHAT_CLIENT_ID", "")
 GIGACHAT_CLIENT_SECRET = os.getenv("GIGACHAT_CLIENT_SECRET", "")
 GIGACHAT_SCOPE = os.getenv("GIGACHAT_SCOPE", "GIGACHAT_API_PERS")
 GIGACHAT_CA_BUNDLE = os.getenv("GIGACHAT_CA_BUNDLE", "")
-GIGACHAT_CHAT_MODEL = os.getenv("GIGACHAT_CHAT_MODEL", "GigaChat-2")
-
-# ---------- CLOUD.RU FOUNDATION MODELS ----------
-CLOUDRU_API_KEY = os.getenv("CLOUDRU_API_KEY", "")
-CLOUDRU_NETWORK_INTERFACE = os.getenv("CLOUDRU_NETWORK_INTERFACE", "")
-CLOUDRU_DOH_URL = os.getenv("CLOUDRU_DOH_URL", "")
-CLOUDRU_EMBEDDING_MODEL = "Qwen/Qwen3-Embedding-0.6B"
-EMBEDDING_DIMENSIONS = 1024
+GIGACHAT_CHAT_MODEL = "GigaChat-2"  # Lite, обычная генерация текста.
 
 # ---------- ИСТОЧНИКИ RSS ----------
 SOURCES = {
     "Sostav": "https://www.sostav.ru/rss",
-    # "Adindex": "https://adindex.ru/news/news.rss",
+    "AdIndex": "https://adindex.ru/news/news.rss",
     # "РБК": "https://rssexport.rbc.ru/rbcnews/news/30/full.rss",
-    # "Ведомости": "https://www.vedomosti.ru/rss/1news",
+    "Ведомости": "https://www.vedomosti.ru/rss/rubric/business/retail",
     "Коммерсант": "https://www.kommersant.ru/RSS/corp.xml",
-    "Forbes": "https://www.forbes.ru/newrss.xml",
-    "Shoppers": "https://shoppers.media/rss.xml",
+    # "Forbes": "https://www.forbes.ru/newrss.xml",
+    # "Shoppers": "https://shoppers.media/rss.xml",
     "ТАСС": "https://tass.ru/rss/v2.xml",
     "РИА Новости": "https://ria.ru/export/rss2/archive/index.xml",
-    "Известия": "https://iz.ru/xml/rss/all.xml",
+    "Известия": "https://iz.ru/xml/rss/news.xml",
 }
 
-# ---------- КЛЮЧЕВЫЕ СЛОВА ДЛЯ ФИЛЬТРАЦИИ ----------
-KEYWORDS = [
-    "ритейл",
-    "retail",
+RSS_EXCERPT_SOURCES = {"ТАСС", "Известия"}
+RSS_STANDARD_HTTP_SOURCES = {"Известия"}
+
+# ---------- ТЕМАТИКА E-COMMERCE ----------
+ECOM_TOPIC_KEYWORDS = [
+    # Каналы и модели онлайн-торговли
+    "e-commerce",
+    "ecommerce",
+    "ecom",
     "е-ком",
-    "e-com",
+    "электронная коммерция",
+    "электронная торговля",
+    "интернет-торговля",
+    "онлайн-ритейл",
+    "онлайн-торговля",
+    "онлайн-продажи",
+    "онлайн-заказы",
+    "онлайн-покупки",
+    "интернет-магазин",
+    "интернет-магазины",
     "маркетплейс",
+    "маркетплейсы",
+    "маркетплейсах",
+    "торговая онлайн-площадка",
+    "социальная коммерция",
+    "social commerce",
+    "live commerce",
+    "quick commerce",
+    "q-commerce",
+    "e-grocery",
+    "онлайн-супермаркет",
+    "c2c",
+    "d2c",
+    "b2b-маркетплейс",
+    "дропшиппинг",
+    # Площадки и продавцы
     "wildberries",
+    "вайлдберриз",
+    "вайлдберрис",
+    "рвб",
     "ozon",
+    "озон",
     "яндекс маркет",
     "мегамаркет",
+    "сбермегамаркет",
+    "авито",
+    "aliexpress",
+    "алиэкспресс",
+    "lamoda",
+    "ламода",
+    "купишуз",
+    "детский мир онлайн",
+    "яндекс лавка",
+    "яндекс еда",
+    "самокат",
+    "купер",
+    "shopify",
+    "amazon",
+    "temu",
+    "shein",
+    "ebay",
+    "etsy",
+    "селлер",
+    "селлеры",
+    "селлеров",
+    "кабинет продавца",
+    "карточка товара",
+    "карточки товаров",
+    "комиссия маркетплейса",
+    "витрина товаров",
+    "подписка продавца",
+    "ритейл-медиа",
+    "retail media",
+    "продвижение товаров",
+    # Доставка, платежи и сопровождение онлайн-заказов
+    "фулфилмент",
+    "фулфиллмент",
+    "fulfillment",
+    "fbo",
+    "fbs",
+    "dbs",
+    "пвз",
+    "пункт выдачи заказов",
+    "пункты выдачи заказов",
+    "постамат",
+    "постаматы",
+    "даркстор",
+    "dark store",
+    "darkstore",
+    "последняя миля",
+    "экспресс-доставка",
+    "доставка онлайн-заказов",
+    "доставка день в день",
+    "возврат онлайн-заказа",
+    "интернет-эквайринг",
+    "онлайн-эквайринг",
+    "оплата частями",
+    "bnpl",
+    "касса интернет-магазина",
+    "трансграничная электронная торговля",
+]
+
+# Заголовки в старом пайплайне также проверяются по прежним широким признакам.
+KEYWORDS = [
+    *ECOM_TOPIC_KEYWORDS,
+    "ритейл",
+    "retail",
+    "e-com",
     "реклам",
     "интернет-торговл",
     "логистик",
@@ -66,20 +152,20 @@ KEYWORDS = [
     "вкусвилл",
     "м.видео",
     "эльдорадо",
-    "ecommerce",
     "fmcg",
     "fashion",
-    "darkstore",
-    "даркстор",
-    "пвз",
     "курьер",
     "x5",
     "х5",
     "о'кей",
-    "озон",
     "wb",
     "rwb",
-    "яндекс лавка",
-    "самокат",
-    "купер",
 ]
+
+# ---------- НОВЫЙ КОНВЕЙЕР ----------
+NEWS_SEARCH_INDEX = os.getenv("NEWS_SEARCH_INDEX", "ecom-keywords-v1")
+NEWS_DUPLICATE_SCORE = float(os.getenv("NEWS_DUPLICATE_SCORE", "0.5"))
+NEWS_DUPLICATE_MIN_MATCHES = int(os.getenv("NEWS_DUPLICATE_MIN_MATCHES", "2"))
+NEWS_MAX_KEYWORDS = int(os.getenv("NEWS_MAX_KEYWORDS", "8"))
+AI_POLL_SECONDS = int(os.getenv("AI_POLL_SECONDS", "5"))
+NEWS_CLEANUP_INTERVAL_MINUTES = int(os.getenv("NEWS_CLEANUP_INTERVAL_MINUTES", "60"))

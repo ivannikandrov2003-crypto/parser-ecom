@@ -1,70 +1,135 @@
-"""Загрузка и разбор RSS и Atom с фильтрацией по заголовку."""
+"""Загрузка и разбор RSS и Atom."""
 
 import logging
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
+from re import sub
+from subprocess import TimeoutExpired, run
 from time import sleep
 from urllib.parse import urljoin, urlsplit
 
 from bs4 import BeautifulSoup, Tag
 from curl_cffi import requests
 from curl_cffi.requests.exceptions import ConnectionError, RequestException, SSLError, Timeout
-from tenacity import before_sleep_log, retry, retry_if_exception_type, stop_after_attempt, wait_exponential
 
-from config import KEYWORDS
+from config import KEYWORDS, RSS_STANDARD_HTTP_SOURCES
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
 class FeedArticle:
-    """Публикация, подходящая по ключевым словам."""
+    """Публикация из ленты."""
 
     source: str
     title: str
     url: str
     published_at: datetime | None
+    excerpt: str = ""
 
 
 class FetchError(RuntimeError):
     """Ошибка загрузки страницы или чтения ленты."""
 
+    def __init__(self, message: str, *, retry_at: datetime | None = None):
+        super().__init__(message)
+        self.retry_at = retry_at
 
-class _TemporaryFetchError(FetchError):
-    """Временный сбой при загрузке страницы."""
+
+@dataclass(frozen=True)
+class FeedResponse:
+    content: bytes
+    url: str
 
 
-@retry(
-    retry=retry_if_exception_type(_TemporaryFetchError),
-    stop=stop_after_attempt(5),
-    wait=wait_exponential(min=1, max=8),
-    before_sleep=before_sleep_log(logger, logging.WARNING),
-    reraise=True,
-)
+FETCH_TIMEOUT_SECONDS = 5
+
+
 def fetch_page(url: str) -> requests.Response:
-    """Скачивает RSS или страницу статьи с повторами временных сбоев."""
+    """Скачивает RSS или статью одной попыткой с общим тайм-аутом."""
     try:
-        response = requests.get(url, impersonate="chrome110", timeout=30, max_redirects=5)
+        response = requests.get(url, impersonate="chrome110", timeout=FETCH_TIMEOUT_SECONDS, max_redirects=5)
     except SSLError:
         raise FetchError(f"Ошибка проверки TLS для {url}") from None
-    except (Timeout, ConnectionError):
-        raise _TemporaryFetchError(f"Сетевой сбой при загрузке {url}") from None
+    except Timeout:
+        raise FetchError(f"Загрузка {url} заняла больше {FETCH_TIMEOUT_SECONDS} секунд") from None
+    except ConnectionError:
+        raise FetchError(f"Сетевой сбой при загрузке {url}") from None
     except RequestException as error:
         raise FetchError(f"Не удалось загрузить {url} (код curl {error.code})") from None
 
-    status = response.status_code
-    if status in {408, 429} or 500 <= status < 600:
-        raise _TemporaryFetchError(f"HTTP {status} при загрузке {url}")
-    if status != 200:
-        raise FetchError(f"HTTP {status} при загрузке {url}")
+    _check_status(response.status_code, url, response.headers.get("Retry-After"))
     return response
+
+
+def _check_status(status: int, url: str, retry_after: str | None):
+    if status == 200:
+        return
+    retry_at = None
+    if status == 429:
+        now = datetime.now(timezone.utc)
+        value = (retry_after or "").strip()
+        try:
+            if value.isascii() and value.isdecimal():
+                retry_at = now + timedelta(seconds=int(value))
+            elif value:
+                date = parsedate_to_datetime(value)
+                retry_at = date if date.tzinfo else date.replace(tzinfo=timezone.utc)
+        except (OverflowError, ValueError):
+            pass
+        if retry_at is None:
+            retry_at = now + timedelta(minutes=30)
+    raise FetchError(f"HTTP {status} при загрузке {url}", retry_at=retry_at)
+
+
+def _fetch_standard_rss(url: str) -> FeedResponse:
+    """Обычный HTTP-запрос к публичной ленте через системный curl."""
+    try:
+        response = run(
+            [
+                "curl", "--disable", "--silent", "--show-error", "--location", "--max-redirs", "5",
+                "--proto", "=http,https", "--proto-redir", "=http,https",
+                "--max-time", str(FETCH_TIMEOUT_SECONDS),
+                "--write-out", "%{stderr}%{http_code}\n%{url_effective}\n%header{retry-after}",
+                "--", url,
+            ],
+            capture_output=True,
+            timeout=FETCH_TIMEOUT_SECONDS + 1,
+            check=False,
+        )
+    except TimeoutExpired:
+        raise FetchError(f"Загрузка {url} заняла больше {FETCH_TIMEOUT_SECONDS} секунд") from None
+    except OSError:
+        raise FetchError("Для чтения RSS «Известий» нужен системный curl") from None
+
+    if response.returncode == 28:
+        raise FetchError(f"Загрузка {url} заняла больше {FETCH_TIMEOUT_SECONDS} секунд")
+    if response.returncode:
+        raise FetchError(f"Не удалось загрузить {url} (код curl {response.returncode})")
+    try:
+        status, final_url, retry_after = response.stderr.decode().split("\n", 2)
+        status_code = int(status)
+    except (UnicodeError, ValueError):
+        raise FetchError(f"Не удалось прочитать HTTP-ответ для {url}") from None
+    _check_status(status_code, url, retry_after)
+    return FeedResponse(response.stdout, final_url or url)
 
 
 def _text(item: Tag, name: str) -> str:
     tag = item.find(name, recursive=False)
     return tag.get_text().strip() if isinstance(tag, Tag) else ""
+
+
+def _article_excerpt(item: Tag) -> str:
+    tag = item.find(["description", "summary"], recursive=False)
+    if not isinstance(tag, Tag):
+        return ""
+    value = tag.decode_contents() if tag.find(True) else tag.get_text()
+    if "<" in value:
+        value = BeautifulSoup(value, "html.parser").get_text(" ", strip=True)
+    return sub(r"\s+([.,!?;:])", r"\1", " ".join(value.split()))
 
 
 def _article_url(item: Tag, feed_url: str) -> str | None:
@@ -87,7 +152,7 @@ def _article_url(item: Tag, feed_url: str) -> str | None:
 
 
 def _publication_date(item: Tag) -> datetime | None:
-    for name in ("pubDate", "published", "date", "updated"):
+    for name in ("pubDate", "published", "date"):
         value = _text(item, name)
         if not value:
             continue
@@ -104,10 +169,10 @@ def _publication_date(item: Tag) -> datetime | None:
     return None
 
 
-def get_source_updates(source: str, url: str) -> list[FeedArticle]:
+def get_source_updates(source: str, url: str, *, filter_titles: bool = True) -> list[FeedArticle]:
     """Возвращает подходящие публикации одной ленты в исходном порядке."""
     logger.info("Читаем RSS %s", source)
-    response = fetch_page(url)
+    response = _fetch_standard_rss(url) if source in RSS_STANDARD_HTTP_SOURCES else fetch_page(url)
     soup = BeautifulSoup(response.content, "xml")
     root = soup.find()
     if root is None or root.name not in {"rss", "feed", "RDF"}:
@@ -116,11 +181,11 @@ def get_source_updates(source: str, url: str) -> list[FeedArticle]:
     articles = []
     for item in root.find_all("item") or root.find_all("entry"):
         title = _text(item, "title")
-        if not title or not any(word in title.lower() for word in KEYWORDS):
+        if not title or (filter_titles and not any(word in title.lower() for word in KEYWORDS)):
             continue
         link = _article_url(item, response.url or url)
         if link:
-            articles.append(FeedArticle(source, title, link, _publication_date(item)))
+            articles.append(FeedArticle(source, title, link, _publication_date(item), _article_excerpt(item)))
     return articles
 
 

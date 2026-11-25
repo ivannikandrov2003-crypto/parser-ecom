@@ -71,3 +71,4 @@ wcwidth==0.6.0
 Werkzeug==3.1.5
 wheel==0.45.1
 yarl==1.23.0
+psycopg[binary]>=3.3,<4

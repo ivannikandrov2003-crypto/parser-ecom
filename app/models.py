@@ -1,6 +1,5 @@
-"""Данные карточек и постраничной выдачи."""
+"""Данные карточек веб-ленты."""
 
-from dataclasses import dataclass
 from zoneinfo import ZoneInfo
 
 from pydantic import AnyHttpUrl, AwareDatetime, BaseModel
@@ -16,16 +15,9 @@ class NewsCard(BaseModel):
     source: str
     published_at: AwareDatetime
     summary: str
+    is_feed_excerpt: bool = False
 
     @property
     def display_date(self) -> str:
         """Форматирует дату публикации по московскому времени."""
         return self.published_at.astimezone(MOSCOW).strftime("%d.%m.%Y, %H:%M МСК")
-
-
-@dataclass(frozen=True)
-class NewsPage:
-    """Одна страница ленты и позиция для чтения следующей."""
-
-    cards: list[NewsCard]
-    next_position: tuple[int, str] | None = None

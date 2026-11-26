@@ -47,6 +47,7 @@ SOURCES = {
     "ТАСС": "https://tass.ru/rss/v2.xml",
     "РИА Новости": "https://ria.ru/export/rss2/archive/index.xml",
     "Известия": "https://iz.ru/xml/rss/news.xml",
+    "Retail.ru": "https://www.retail.ru/rss/news/",
 }
 
 RSS_EXCERPT_SOURCES = {"ТАСС", "Известия"}

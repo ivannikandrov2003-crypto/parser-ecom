@@ -80,28 +80,32 @@ const copyText = copyDialog.querySelector("textarea");
 for (const button of document.querySelectorAll("[data-copy]")) {
     let resetLabel;
     button.addEventListener("click", async () => {
-        const card = button.closest(".news-card");
-        const summary = card.querySelector(".news-card__summary").textContent.trim();
-        const originalUrl = card.querySelector(".news-card__link").href;
-        const footnotes = Array.from(
-            card.querySelectorAll(".news-card__footnotes li"), note => note.textContent.trim(),
-        ).join("\n");
-        const message = [summary, footnotes, `Источник: ${originalUrl}`].filter(Boolean).join("\n\n");
+        const post = button.closest(".news-card").querySelector(".news-card__post");
+        const message = Array.from(post.children, paragraph => {
+            const link = paragraph.querySelector("a");
+            const content = paragraph.innerText.trim();
+            return link ? `${content} (${link.href})` : content;
+        }).join("\n\n");
 
         try {
-            await navigator.clipboard.writeText(message);
+            await navigator.clipboard.write([new ClipboardItem({
+                "text/html": new Blob([post.innerHTML], { type: "text/html" }),
+                "text/plain": new Blob([message], { type: "text/plain" }),
+            })]);
         } catch {
-            copyText.value = message;
-            copyDialog.showModal();
-            copyText.focus();
-            copyText.select();
-            return;
+            try {
+                await navigator.clipboard.writeText(message);
+            } catch {
+                copyText.value = message;
+                copyDialog.showModal();
+                copyText.focus();
+                copyText.select();
+                return;
+            }
         }
 
         button.textContent = "Скопировано";
-        copyStatus.textContent = footnotes
-            ? "Выжимка, примечания и ссылка на оригинал скопированы."
-            : "Выжимка и ссылка на оригинал скопированы.";
+        copyStatus.textContent = "Текст публикации скопирован.";
         clearTimeout(resetLabel);
         resetLabel = setTimeout(() => {
             button.textContent = "Скопировать";

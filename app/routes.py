@@ -12,10 +12,11 @@ from fastapi.templating import Jinja2Templates
 from psycopg import Error
 from pydantic import AnyHttpUrl, AwareDatetime, BaseModel, Field
 
+from config import TELEGRAM_CHANNEL_NAME, TELEGRAM_CHANNEL_URL, TELEGRAM_CONFIGURED
+
 from .database import connect_async
 from .footnotes import Footnote, attach_footnotes
 from .models import NewsCard
-from .telegram_worker import MODE as TELEGRAM_MODE
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -116,6 +117,8 @@ async def news_feed(
             "next_page_url": next_url,
             "feed_url": feed_url,
             "error_message": error_message,
+            "channel_name": TELEGRAM_CHANNEL_NAME,
+            "channel_url": TELEGRAM_CHANNEL_URL,
         },
         status_code=status_code,
         headers={"Cache-Control": "no-store"},
@@ -170,7 +173,7 @@ async def refresh_status(response: Response):
             WHERE job.id = 1
             """
         )
-        return (await cursor.fetchone()) | {"telegram": TELEGRAM_MODE}
+        return (await cursor.fetchone()) | {"telegram": "configured" if TELEGRAM_CONFIGURED else "disabled"}
 
 
 @router.post("/api/refresh", status_code=202)

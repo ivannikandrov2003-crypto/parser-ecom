@@ -1,4 +1,5 @@
 import os
+from re import fullmatch
 
 from dotenv import load_dotenv
 
@@ -11,6 +12,21 @@ NEWS_RETENTION_DAYS = 30
 # ---------- ПАЙПЛАЙН ----------
 REFRESH_INTERVAL_MINUTES = int(os.getenv("REFRESH_INTERVAL_MINUTES", "30"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+
+# ---------- TELEGRAM ----------
+TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+TELEGRAM_CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()
+TELEGRAM_CONFIGURED = bool(TELEGRAM_CHANNEL_ID and (
+    TELEGRAM_BOT_TOKEN or os.getenv("TELEGRAM_TOKEN_CONFIGURED") == "true"
+))
+TELEGRAM_CHANNEL_NAME = os.getenv("TELEGRAM_CHANNEL_NAME", "").strip() or "Новости e-commerce"
+TELEGRAM_CHANNEL_USERNAME = os.getenv("TELEGRAM_CHANNEL_USERNAME", "").strip().removeprefix("@")
+if not TELEGRAM_CHANNEL_USERNAME and TELEGRAM_CHANNEL_ID.startswith("@"):
+    TELEGRAM_CHANNEL_USERNAME = TELEGRAM_CHANNEL_ID[1:]
+TELEGRAM_CHANNEL_URL = (
+    f"https://t.me/{TELEGRAM_CHANNEL_USERNAME}"
+    if fullmatch(r"[a-zA-Z0-9_]{1,32}", TELEGRAM_CHANNEL_USERNAME) else None
+)
 
 # ---------- GIGACHAT ----------
 GIGACHAT_CLIENT_ID = os.getenv("GIGACHAT_CLIENT_ID", "")

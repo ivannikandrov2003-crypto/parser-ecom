@@ -120,6 +120,23 @@ services:
       TELEGRAM_CHANNEL_NAME: ${TELEGRAM_CHANNEL_NAME:-}
       TELEGRAM_CHANNEL_USERNAME: ${TELEGRAM_CHANNEL_USERNAME:-}
 
+  email:
+    <<: *app-image
+    restart: on-failure
+    command: ["python", "-m", "app.email_worker"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      <<: *db-environment
+      PGUSER: news_ai
+      PGPASSWORD: ${NEWS_AI_PASSWORD:-local-ai}
+      EMAIL_SENDER: ${EMAIL_SENDER:-}
+      EMAIL_PASSWORD: ${EMAIL_PASSWORD:-}
+      EMAIL_RECIPIENT: ${EMAIL_RECIPIENT:-}
+      SMTP_SERVER: ${SMTP_SERVER:-smtp.yandex.ru}
+      SMTP_PORT: ${SMTP_PORT:-587}
+
   cleanup:
     <<: *app-image
     command: ["python", "-m", "app.cleanup_worker"]

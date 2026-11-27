@@ -13,6 +13,13 @@ NEWS_RETENTION_DAYS = 30
 REFRESH_INTERVAL_MINUTES = int(os.getenv("REFRESH_INTERVAL_MINUTES", "30"))
 LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
 
+# ---------- ПОЧТА ----------
+EMAIL_SENDER = os.getenv("EMAIL_SENDER", "").strip()
+EMAIL_PASSWORD = os.getenv("EMAIL_PASSWORD", "")
+EMAIL_RECIPIENT = os.getenv("EMAIL_RECIPIENT", "").strip()
+SMTP_SERVER = os.getenv("SMTP_SERVER", "smtp.yandex.ru")
+SMTP_PORT = int(os.getenv("SMTP_PORT", "587"))
+
 # ---------- TELEGRAM ----------
 TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
 TELEGRAM_CHANNEL_ID = os.getenv("TELEGRAM_CHANNEL_ID", "").strip()

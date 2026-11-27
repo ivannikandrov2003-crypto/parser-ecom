@@ -55,6 +55,7 @@ SOURCES = {
     "РИА Новости": "https://ria.ru/export/rss2/archive/index.xml",
     "Известия": "https://iz.ru/xml/rss/news.xml",
     "Retail.ru": "https://www.retail.ru/rss/news/",
+    "CNews": "https://www.cnews.ru/inc/rss/news.xml",
 }
 
 RSS_EXCERPT_SOURCES = {"ТАСС", "Известия"}
